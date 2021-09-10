@@ -1,3 +1,4 @@
+
 """
 ================================
 Recognizing hand-written digits
@@ -14,10 +15,12 @@ print(__doc__)
 
 # Standard scientific Python imports
 import matplotlib.pyplot as plt
+import pandas as pd
 
 # Import datasets, classifiers and performance metrics
 from sklearn import datasets, svm, metrics
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 
 ###############################################################################
 # Digits dataset
@@ -60,43 +63,63 @@ for ax, image, label in zip(axes, digits.images, digits.target):
 n_samples = len(digits.images)
 data = digits.images.reshape((n_samples, -1))
 
-# Create a classifier: a support vector classifier
-clf = svm.SVC(gamma=0.001)
+gamma_values = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000]
 
-# Split data into 50% train and 50% test subsets
-X_train, X_test, y_train, y_test = train_test_split(
-    data, digits.target, test_size=0.5, shuffle=False)
+accuracy_validation, accuracy_test = [], []
 
-# Learn the digits on the train subset
-clf.fit(X_train, y_train)
+for gamma in gamma_values: 
+    # Create a classifier: a support vector classifier
+    clf = svm.SVC(gamma=gamma)
 
-# Predict the value of the digit on the test subset
-predicted = clf.predict(X_test)
+    # Split data into 70% train and 15% validation and 15% test subsets
+    X_train, X_test, y_train, y_test = train_test_split(
+        data, digits.target, test_size=0.3, shuffle=False)
 
-###############################################################################
-# Below we visualize the first 4 test samples and show their predicted
-# digit value in the title.
+    X_test, X_validation, y_test, y_validation = train_test_split(
+        X_test, y_test, test_size=0.5, shuffle=False)
 
-_, axes = plt.subplots(nrows=1, ncols=4, figsize=(10, 3))
-for ax, image, prediction in zip(axes, X_test, predicted):
-    ax.set_axis_off()
-    image = image.reshape(8, 8)
-    ax.imshow(image, cmap=plt.cm.gray_r, interpolation='nearest')
-    ax.set_title(f'Prediction: {prediction}')
 
-###############################################################################
-# :func:`~sklearn.metrics.classification_report` builds a text report showing
-# the main classification metrics.
 
-print(f"Classification report for classifier {clf}:\n"
-      f"{metrics.classification_report(y_test, predicted)}\n")
+    # Learn the digits on the train subset
+    clf.fit(X_train, y_train)
 
-###############################################################################
-# We can also plot a :ref:`confusion matrix <confusion_matrix>` of the
-# true digit values and the predicted digit values.
+    # Predict the value of the digit on the test subset
+    predicted_val = clf.predict(X_validation)
+    predicted_test = clf.predict(X_test)
 
-disp = metrics.plot_confusion_matrix(clf, X_test, y_test)
-disp.figure_.suptitle("Confusion Matrix")
-print(f"Confusion matrix:\n{disp.confusion_matrix}")
+    ###############################################################################
+    # Below we visualize the first 4 test samples and show their predicted
+    # digit value in the title.
 
-plt.show()
+    _, axes = plt.subplots(nrows=1, ncols=4, figsize=(10, 3))
+    for ax, image, prediction in zip(axes, X_test, predicted_test):
+        ax.set_axis_off()
+        image = image.reshape(8, 8)
+        ax.imshow(image, cmap=plt.cm.gray_r, interpolation='nearest')
+        ax.set_title(f'Prediction: {prediction}')
+
+    ###############################################################################
+    # :func:`~sklearn.metrics.classification_report` builds a text report showing
+    # the main classification metrics.
+
+    #Commenting
+    #print(f"Classification report for classifier {clf}:\n"
+    #    f"{metrics.classification_report(y_test, predicted_test)}\n")
+
+    ###############################################################################
+    # We can also plot a :ref:`confusion matrix <confusion_matrix>` of the
+    # true digit values and the predicted digit values.
+
+    #Commenting
+    disp = metrics.plot_confusion_matrix(clf, X_test, y_test)
+    disp.figure_.suptitle("Confusion Matrix")
+    #print(f"Confusion matrix:\n{disp.confusion_matrix}")
+
+    accuracy_validation.append(accuracy_score(y_validation, predicted_val))
+    accuracy_test.append(accuracy_score(y_test, predicted_test))
+
+    plt.show()
+
+print(pd.DataFrame(data = {'Gamma Value': gamma_values ,'Accuracy of Validation Data': accuracy_validation, 'Accuracy of Test Data': accuracy_test}))
+print()
+print("The best value of gamma is:", gamma_values[accuracy_test.index(max(accuracy_test))])
