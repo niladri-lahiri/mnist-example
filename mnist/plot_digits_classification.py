@@ -16,11 +16,16 @@ print(__doc__)
 # Standard scientific Python imports
 import matplotlib.pyplot as plt
 import pandas as pd
+import pickle
 
 # Import datasets, classifiers and performance metrics
 from sklearn import datasets, svm, metrics
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
+from skimage.transform import rescale
+from utils.utils import preprocess, create_splits, test
+
 
 ###############################################################################
 # Digits dataset
@@ -64,39 +69,45 @@ n_samples = len(digits.images)
 data = digits.images.reshape((n_samples, -1))
 
 gamma_values = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000]
+#rescale_factor = [0.25, 0.5, 0.75, 1]
+rescale_factor = [1]
 
 accuracy_validation, accuracy_test = [], []
+f1_validation, f1_test = [], []
+model_location, non_skipped_gamma_values = [], []
 
 for gamma in gamma_values: 
+    
+
+    images = preprocess(digits.images, rescale_factor = rescale_factor)
+
+    test_size = 0.3
+    validation_size_from_test_size = 0.5
+
+    X_train, X_test, X_validation, y_train, y_test, y_validation = create_splits(data, digits, test_size, validation_size_from_test_size)
+
     # Create a classifier: a support vector classifier
     clf = svm.SVC(gamma=gamma)
-
-    # Split data into 70% train and 15% validation and 15% test subsets
-    X_train, X_test, y_train, y_test = train_test_split(
-        data, digits.target, test_size=0.3, shuffle=False)
-
-    X_test, X_validation, y_test, y_validation = train_test_split(
-        X_test, y_test, test_size=0.5, shuffle=False)
-
-
 
     # Learn the digits on the train subset
     clf.fit(X_train, y_train)
 
     # Predict the value of the digit on the test subset
     predicted_val = clf.predict(X_validation)
-    predicted_test = clf.predict(X_test)
+    #predicted_test = clf.predict(X_test)
 
     ###############################################################################
     # Below we visualize the first 4 test samples and show their predicted
     # digit value in the title.
 
+    '''
     _, axes = plt.subplots(nrows=1, ncols=4, figsize=(10, 3))
     for ax, image, prediction in zip(axes, X_test, predicted_test):
         ax.set_axis_off()
         image = image.reshape(8, 8)
         ax.imshow(image, cmap=plt.cm.gray_r, interpolation='nearest')
         ax.set_title(f'Prediction: {prediction}')
+        '''
 
     ###############################################################################
     # :func:`~sklearn.metrics.classification_report` builds a text report showing
@@ -115,11 +126,46 @@ for gamma in gamma_values:
     disp.figure_.suptitle("Confusion Matrix")
     #print(f"Confusion matrix:\n{disp.confusion_matrix}")
 
-    accuracy_validation.append(accuracy_score(y_validation, predicted_val))
-    accuracy_test.append(accuracy_score(y_test, predicted_test))
+    val_accuracy_score = accuracy_score(y_validation, predicted_val)
+    val_f1_score = f1_score(y_validation, predicted_val, average='weighted')
 
-    plt.show()
+    if val_accuracy_score < 0.11:
+        print("Skipping for gamma:", gamma)
+        continue
 
-print(pd.DataFrame(data = {'Gamma Value': gamma_values ,'Accuracy of Validation Data': accuracy_validation, 'Accuracy of Test Data': accuracy_test}))
+    #Save the model to disk
+    saved_model = pickle.dumps(clf)
+    path = '/home/niladri/mlops/mnist-example/models/' + str(gamma) + '.pkl' 
+    with open(path, 'wb') as f:
+        pickle.dump(clf, f)
+    
+    accuracy_validation.append(val_accuracy_score)
+    f1_validation.append(val_f1_score)
+    model_location.append(path)
+    non_skipped_gamma_values.append(gamma)
+
+
+    #plt.show()
+
+#print(pd.DataFrame(data = {'Gamma Value': gamma_values ,'Accuracy of Validation Data': accuracy_validation, 'Accuracy of Test Data': accuracy_test}))
+#print()
+#print("The best value of gamma is:", gamma_values[accuracy_test.index(max(accuracy_test))])
+
 print()
-print("The best value of gamma is:", gamma_values[accuracy_test.index(max(accuracy_test))])
+print(pd.DataFrame(data = {'Gamma Value': non_skipped_gamma_values ,'Accuracy of Validation Data': accuracy_validation, 'f1 score of Validation Data': f1_validation, 'Model Location': model_location}))
+best_model_path = model_location[accuracy_validation.index(max(accuracy_validation))]
+best_gamma_value = non_skipped_gamma_values[accuracy_validation.index(max(accuracy_validation))]
+
+print()
+print("The best value of gamma is:", best_gamma_value)
+
+loaded_model = pickle.load(open(best_model_path, 'rb'))
+
+accuracy_test, f1_score_test = test(loaded_model, X_test, y_test)
+
+print()
+print("Best Model's accuracy on Test Data: ", accuracy_test)
+print("Best Model's f1-score on Test Data: ", f1_score_test)
+print()
+
+
