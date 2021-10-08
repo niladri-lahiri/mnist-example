@@ -26,11 +26,11 @@ def preprocess(images, rescale_factor):
     return resized_images
 
 
-def create_splits(data, digits, test_size, validation_size_from_test_size):
+def create_splits(data, target, test_size, validation_size_from_test_size):
 
     # Split data into 70% train and 15% validation and 15% test subsets
     X_train, X_test, y_train, y_test = train_test_split(
-        data, digits.target, test_size=test_size, shuffle=False)
+        data, target, test_size=test_size, shuffle=False)
 
     X_test, X_validation, y_test, y_validation = train_test_split(
         X_test, y_test, test_size=validation_size_from_test_size, shuffle=False)
