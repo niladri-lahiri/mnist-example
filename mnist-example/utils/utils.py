@@ -7,6 +7,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 from sklearn import svm
+from sklearn import tree
 
 
 def flatten_images():
@@ -39,14 +40,17 @@ def create_splits(data, target, test_size, validation_size_from_test_size):
 
 
 
-def train_and_save_model(gamma_values, X_train, y_train, X_validation, y_validation):
+def train_and_save_model(classifier, hyperparameter_list, X_train, y_train, X_validation, y_validation):
 
-    accuracy_validation, f1_validation, model_location, non_skipped_gamma_values = [], [], [], []
+    accuracy_validation, f1_validation, model_location, non_skipped_values = [], [], [], []
 
-    for gamma in gamma_values: 
+    for hyperparameter_value in hyperparameter_list: 
 
         # Create a classifier: a support vector classifier
-        clf = svm.SVC(gamma=gamma)
+        if classifier == 'SVM':
+            clf = svm.SVC(gamma = hyperparameter_value)
+        elif classifier == 'DecisionTree':
+            clf = tree.DecisionTreeClassifier(max_depth = hyperparameter_value)
 
         # Learn the digits on the train subset
         clf.fit(X_train, y_train)
@@ -58,13 +62,13 @@ def train_and_save_model(gamma_values, X_train, y_train, X_validation, y_validat
         val_f1_score = f1_score(y_validation, predicted_val, average='weighted')
 
         if val_accuracy_score < 0.11:
-            print("Skipping for gamma:", gamma)
+            print("Skipping for the hyperparameter value:", hyperparameter_value)
             continue
 
         #Save the model to disk
         saved_model = pickle.dumps(clf)
         model_path = '/home/niladri/mlops/mnist-example/models'
-        path = model_path + '/' + str(gamma) + '.pkl' 
+        path = model_path + '/' + classifier + '_' + str(hyperparameter_value) + '.pkl' 
         with open(path, 'wb') as f:
             pickle.dump(clf, f)
 
@@ -72,9 +76,9 @@ def train_and_save_model(gamma_values, X_train, y_train, X_validation, y_validat
         accuracy_validation.append(val_accuracy_score)
         f1_validation.append(val_f1_score)
         model_location.append(path)
-        non_skipped_gamma_values.append(gamma)
+        non_skipped_values.append(hyperparameter_value)
 
-    df = pd.DataFrame(data = {'Gamma Value': non_skipped_gamma_values ,'Accuracy of Validation Data': accuracy_validation, 'f1 score of Validation Data': f1_validation, 'Model Location': model_location})
+    df = pd.DataFrame(data = {'Hyperparameter Value': non_skipped_values ,'Accuracy of Validation Data': accuracy_validation, 'f1 score of Validation Data': f1_validation, 'Model Location': model_location})
 
     return df
 
@@ -101,9 +105,10 @@ def model_test(model_path, X, y):
     return accuracy_test, f1_score_test
 
 
-def print_data_frame (df):
+def print_data_frame (clf_name, df):
 
     print()
+    print("Metrics for:", clf_name)
     print(df)
 
 def print_metrics(model_accuracy, model_f1_score):

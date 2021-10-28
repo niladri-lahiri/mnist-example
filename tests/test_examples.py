@@ -48,7 +48,7 @@ def test_small_data_overfit_checking():
 def test_create_split_100_samples():
 
     rescale_factor, test_size, validation_size, subsampling = 1, 0.3, 0.2, 100
-    validation_size_from_test_size = float(validation_size)/float(test_size)
+    validation_size_from_test_size = validation_size/test_size
 
     digits = datasets.load_digits()
     n_samples = len(digits.images)
