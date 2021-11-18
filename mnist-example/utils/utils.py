@@ -116,3 +116,7 @@ def print_metrics(model_accuracy, model_f1_score):
     print()
     print("Accuracy on Test Data:", model_accuracy)
     print("f1 score on Test Data:", model_f1_score)
+
+def load(model_path):
+     return pickle.load(open(model_path, 'rb'))
+     
