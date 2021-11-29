@@ -18,6 +18,7 @@ decision_tree_clf = utils.load('/exp/models/DecisionTree_18.0.pkl') #saved model
 def hello_world():
     return "<p>Hello, World!</p>"
 
+
 @app.route("/svm_predict", methods=['POST', 'GET'])
 def svm_predict():
     input_json = request.json
@@ -25,6 +26,7 @@ def svm_predict():
     image = np.array(image).reshape(1, -1)
     predicted = svm_clf.predict(image)
     return str(predicted[0])
+
 
 @app.route("/decision_tree_predict", methods=['POST', 'GET'])
 def decision_tree_predict():
